@@ -1,0 +1,338 @@
+---
+title: "PROJECT DRAFT"  
+output: html_document
+---
+
+"GROUP: ALLIGATOR"  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, fig.height = 3)
+library(tidyverse)
+library(lubridate)
+library(corrplot)
+library(psych)
+library(GGally)
+source("../scripts/ggprob.R")
+```
+
+**INTRO**  
+The Spotify dataset gives us information about the various songs that users listen to as well as the features and the popularity of the track.
+
+In this project, we aim to analyse how popular a track is and see if we may predict the same based on the song’s key features.
+
+**BACKGROUND**
+
+The dataset is obtained  from Spotify directly at - https://www.aicrowd.com/challenges/spotify-million-playlist-dataset-challenge/dataset_file  
+
+The direct link to the dataset may be found at The dataset to be used may be found at :https://github.com/RutvaRajdev/Spotify-Recommendation-System/blob/master/merged_final.csv
+
+An initial look at the data suggests that it is moderately clean with not too many missing values. However, in order to make our analysis easier, we will be filtering out some rows.   
+
+Some of the key variables are as follows: 1)album_name- Name od the album containing the track
+
+2)abum_release_date - Date on which the album containing the track was released
+
+3)track_duration_ms - Duration of the track
+
+4)track_explicit- 0 = No explicit content, 1 = Explicit content) Categorical
+
+5)track_name- Name of the track’s artist
+
+6)track_popularity- The popularity of the track. The value will be between 0 and 100, with 100 being the most popular.
+
+7)danceability- Danceability describes how suitable a track is for dancing based on a combination of musical elements including tempo, rhythm stability, beat strength, and overall regularity. A value of 0.0 is least danceable and 1.0 is most danceable.
+
+8)energy- Energy is a measure from 0.0 to 1.0 and represents a perceptual measure of intensity and activity. Typically, energetic tracks feel fast, loud, and noisy.
+
+9)key-The key the track is in. Integers map to pitches using standard Pitch Class notation . E.g. 0 = C, 1 = C♯/D♭, 2 = D, and so on.
+
+10)loudness- The overall loudness of a track in decibels (dB).
+
+11)mode- Mode indicates the modality (major or minor) of a track. Major is represented by 1 and minor is 0.
+
+12)speechiness- peechiness detects the presence of spoken words in a track. The more exclusively speech-like the recording (e.g. talk show, audio book, poetry), the closer to 1.0 the attribute value. Values above 0.66 describe tracks that are probably made entirely of spoken words. Values between 0.33 and 0.66 describe tracks that may contain both music and speech, either in sections or layered, including such cases as rap music. Values below 0.33 most likely represent music and other non-speech-like tracks.
+
+13)acousticness - This value describes how acoustic a song is. A maximum score of 1.0 means the song is most likely to be an acoustic one with a minimum score of 0 meaning the song is least likely to be an acoustic one
+
+14)instrumentalness- Predicts whether a track contains no vocals. “Ooh” and “aah” sounds are treated as instrumental in this context. Rap or spoken word tracks are clearly “vocal”. The closer the instrumentalness value is to 1.0, the greater likelihood the track contains no vocal content.
+
+15)liveness- This value describes the probability that the song was recorded with a live audience ( Ranges from 0 to 1)
+
+16)valence- A measure from 0.0 to 1.0 describing the musical positiveness conveyed by a track.
+
+17)tempo- The overall estimated tempo of a track in beats per minute (BPM).
+
+18)artist_popularity- The popularity of the artist. The value will be between 0 and 100, with 100 being the most popular.
+
+19)genre- A list of the genres used to classify the album
+
+
+
+In the following chunk, we assign each track a deacde in which it was released. This will better enable us to make comparisons across decades.
+```{r reading in csv and filtering data}
+music = read_csv("spotify_csv.csv")
+
+music = music %>% 
+  mutate(date = mdy(album_release_date)) %>% 
+  drop_na(date, artist_genre1) %>% 
+  select(-c(artist_genre2, artist_genre3)) %>% 
+  mutate(period = case_when(
+    year(date) <= 1950 ~ "1941-1950",
+    year(date) <= 1960 ~ "1951-1960",
+    year(date) <= 1970 ~ "1961-1970",
+    year(date) <= 1980 ~ "1971-1980",
+    year(date) <= 1990 ~ "1981-1990",
+    year(date) <= 2000 ~ "1991-2000",
+    year(date) <= 2010 ~ "2001-2010",
+    year(date) <= 2020 ~ "2011-2020",)) 
+
+df1 = music %>% 
+  group_by(artist_genre1) %>% 
+  summarise(n = n()) %>% 
+  filter(n >= 10)
+
+
+df3 = music %>% 
+  inner_join(df1, by = "artist_genre1") %>%
+  group_by(artist_genre1, period) %>% 
+  summarise(popularity = sum(track_popularity)) %>% 
+  arrange(period, popularity) 
+```
+
+**ANALYSIS**
+
+The following chunk helps us deduce the two most popular genres for each decade.
+
+```{r Finding top two most popular genres for each period}
+df4 = df3 %>% 
+  filter(period == "1941-1950") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df5 = df3 %>% 
+  filter(period == "1951-1960") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df6 = df3 %>% 
+  filter(period == "1961-1970") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df7 = df3 %>% 
+  filter(period == "1971-1980") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df8 = df3 %>% 
+  filter(period == "1981-1990") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df9 = df3 %>% 
+  filter(period == "1991-2000") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df10 = df3 %>% 
+  filter(period == "2001-2010") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+df11 = df3 %>% 
+  filter(period == "2011-2020") %>% 
+  arrange(desc(popularity)) %>% head(n = 2)
+
+filter_df = full_join(df4, df5) %>% 
+  full_join(df6) %>% full_join(df7) %>% full_join(df8) %>% full_join(df9) %>% 
+  full_join(df10) %>% full_join(df11) 
+  
+```
+
+The following chunk is a visual representation of the top 2 popular genres by decade
+```{r}
+ggplot(filter_df, aes(x = period, y = popularity)) +
+  geom_col(aes(fill = artist_genre1), position = "dodge") +
+  theme(axis.text.x = element_text(angle = 90))+ scale_y_log10()
+```
+
+In an attemp to further filter out data, we will only be retaining tracks that belong to any of the top popular genres for a decade
+```{r}
+final_df= inner_join(music, filter_df, by = "artist_genre1")%>% 
+  select(- c(popularity, period.y)) %>% 
+  rename(genre = artist_genre1,
+         period = period.x) %>% 
+  mutate(popularity_group = as.numeric(case_when(
+    ((track_popularity > 0) & (track_popularity < 20)) ~ "100",
+    ((track_popularity >= 20) & (track_popularity < 40))~ "200",
+    ((track_popularity >= 40) & (track_popularity < 60)) ~ "300",
+    TRUE ~ "400")),
+    duration = track_duration_ms / 60000) 
+  
+genre_pop_df = final_df %>% 
+  group_by(period, genre) %>% 
+  summarise(pop = sum(track_popularity))
+```
+
+This graph helps us visualize the trend of the genres over the years. Some of the earlier decades seem to have a lot of missing values. This is due to the fact that not all years have tracks with all genres.
+```{r}
+
+ggplot(genre_pop_df)+
+  geom_col(aes(x = period, y = pop, fill = genre), position = position_dodge2(preserve = "single")) +
+  theme(axis.text.x = element_text(angle = 90)) + scale_y_log10()
+  
+```
+
+
+
+
+
+
+ We now proceed to analyse the relation between various track features and song popularity so as to answer our primary question.
+ However, in an attempt to see a clear trend,we will observe the relation for each period and see how it varies.
+
+The following code helps us track change in popularity due to changing acousticness 
+```{r}
+
+ggplot(final_df, aes(acousticness, track_popularity)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+  
+```
+
+The following code helps us track change in popularity due to changing loudness
+```{r}
+ggplot(final_df, aes(loudness, track_popularity)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = FALSE) +
+   geom_smooth(se = FALSE, color = "red")+
+  facet_wrap(~period)
+  
+```
+
+The following code helps us track change in popularity due to changing danceability 
+```{r}
+ggplot(final_df, aes(danceability, track_popularity)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+  
+```
+
+The following code helps us track change in popularity due to changing energy 
+```{r}
+ggplot(final_df, aes(energy, track_popularity)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+  
+```
+
+The following code helps us track change in popularity due to changing speechiness
+```{r}
+ggplot(final_df, aes(speechiness, track_popularity)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+  
+```
+
+
+The following code plots instrumentalness against popularity
+```{r}
+ggplot(final_df, aes(instrumentalness, track_popularity)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+```
+
+
+We notice no significant trend between track features and popularity
+
+Another visualization that would greatly aid our understanding of the correlation between these features would be graphs plotting one feature against the other.
+
+The following code plots acousticness against danceability
+
+```{r}
+ggplot(final_df, aes(acousticness, danceability)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+```
+
+
+The following code plots loudness against danceability
+```{r}
+ggplot(final_df, aes(loudness, danceability)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+```
+
+
+The following code plots energy against danceability
+```{r}
+ggplot(final_df, aes(energy, danceability)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+```
+
+The following code plots energy against loudness
+```{r}
+ggplot(final_df, aes(energy, loudness)) +
+  geom_point()+
+  geom_smooth(method = "lm", se = F) +
+  geom_smooth(se = F, color = "red")+
+  facet_wrap(~period)
+```
+
+
+
+
+To support and strengthen our understanding further, we will visualize the correlations between various features.
+
+```{r}
+corr = final_df %>%
+select(track_popularity, duration,danceability,energy,loudness,speechiness,acousticness,instrumentalness, liveness, valence, tempo)
+
+M = cor(corr)
+
+corrplot(M, method = 'number', addCoef.col = 1, number.cex = 0.7,tl.col= "black") 
+
+```
+
+This plot helps us conclude that none of the features strongly affect the track popularity. However, some variables have a strong correlation with each other.
+
+
+
+```{r}
+p = final_df %>% group_by(period, mode) %>% 
+  summarise(pop = sum(track_popularity))
+
+ggplot(p, aes(mode, pop)) +
+  geom_col()+
+  facet_wrap(~period)
+```
+There is clear relationship between mode and track popularity. It is very evident that songs with a major mode have a higher popularity. It is generally noticed that songs with a major mode are associated with a upbeat and cheerful music.
+
+
+
+While the track popularity as measured by spotify may be one way of analyzing how well a song is doing, analyzing the number of followers for a song may be another.  
+
+The following visualization is critical in its ability to convey how various song features affect the number of listeners the song has.
+```{r visuaizing the the listeners of a track based on various track features}
+
+listener_count_df= corr %>% 
+  pivot_longer(cols = c("track_popularity", "duration","danceability","energy","loudness","speechiness","acousticness","instrumentalness", "liveness", "valence", "tempo"), names_to = "category", values_to = "count") 
+
+ggplot(listener_count_df, aes(x= count)) +
+  geom_histogram(binwidth = 0.5) + 
+  facet_wrap(~category) + scale_x_log10()+ scale_y_log10() 
+```
+We see a clear positive relation between acousticness and count, valence and count and energy and count.
+
+
+** DISCUSSION**    
+What we see is that it may be nearly impossible to accurately predict a track's popularity given its features. However, we must keep in mind the primary limitation of our analysis which is the large dataset which might be making it harder to observe trends.
