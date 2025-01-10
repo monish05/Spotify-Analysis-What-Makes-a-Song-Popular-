@@ -1,6 +1,6 @@
 # Spotify Analysis: What Makes a Song Popular?
 
-The project explores Spotify data to identify what makes a song popular. By analyzing features like danceability and energy, it found artist popularity to be the strongest predictor. While no single feature fully explains popularity, the study highlights the complexity of music preferences and suggests future work with advanced models and broader data.
+The project explores Spotify data to identify what makes a song popular by analyzing features like danceability and energy.
 
 ## 1. What Does This Project Do?
 
